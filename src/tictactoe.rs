@@ -1,5 +1,7 @@
 use std::io;
 
+#[derive(Clone)]
+#[derive(Debug)]
 enum BoardEntry {
   Blank,
   X,
@@ -14,13 +16,20 @@ struct Board {
 }
 
 impl Board {
-  fn get(&self, x: u8, y: u8) -> BoardEntry {
+  fn get(&self, x: usize, y: usize ) -> &BoardEntry {
     return &(&self.board[x])[y];
   }
+  fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
+    self.board[x][y] = entry;
+  }
+  // fn pretty_print(&self) {
+  //   let mut string = "";
+  //   for 
+  // }
 }
 
-fn initialise_board() {
-  let board = Board {
+fn initialise_board() -> Board {
+  return Board {
     board: vec![vec![BoardEntry::Blank; 3]; 3]
   };
 }
@@ -28,6 +37,8 @@ fn initialise_board() {
 /*
 * Main tic tac toe board
 */
-fn tictactoe_board() {
-
+pub fn tictactoe_board() {
+  let mut board = initialise_board();
+  board.put(0, 0, BoardEntry::X);
+  
 }
