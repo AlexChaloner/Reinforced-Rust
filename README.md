@@ -9,5 +9,5 @@ Prerequisites:
 Then compile using:
 
 ```bash
-cargo install
+cargo run
 ```
