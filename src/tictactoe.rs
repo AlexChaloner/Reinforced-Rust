@@ -37,9 +37,9 @@ impl Board {
   }
   fn pretty_print(&self) {
     let mut string = String::from("+---+---+---+\n");
-    for y in 0..3 {
+    for x in 0..3 {
       string.push('|');
-      for x in 0..3 {
+      for y in 0..3 {
         string.push_str(format!(" {} |", self.get(x, y)).as_str());
       }
       string.push_str("\n+---+---+---+\n");
@@ -58,7 +58,7 @@ fn has_someone_won(board: &Board) -> Option<BoardEntry> {
   // Check rows
   for y in 0..3 {
     let first = board.get(0, y);
-    if first == BoardEntry::Blank { break };
+    if first == BoardEntry::Blank { continue };
     if first == board.get(1, y) && first == board.get(2, y) {
       return Some(first);
     }
@@ -66,7 +66,7 @@ fn has_someone_won(board: &Board) -> Option<BoardEntry> {
   // Check columns
   for x in 0..3 {
     let first = board.get(x, 0);
-    if first == BoardEntry::Blank { break };
+    if first == BoardEntry::Blank { continue };
     if first == board.get(x, 1) && first == board.get(x, 2) {
       return Some(first);
     }
@@ -98,6 +98,29 @@ fn has_someone_won(board: &Board) -> Option<BoardEntry> {
   return Some(BoardEntry::Blank);
 }
 
+fn get_move_input() -> Result<(usize, usize), ()> {
+  let mut xy = String::new();
+  io::stdin().read_line(&mut xy).expect("Failed to read line");
+  let xy: Vec<&str> = xy.splitn(2, ",").collect();
+  if xy.len() != 2 {
+    return Err(());
+  }
+  let x: usize = match xy[0].trim().parse() {
+    Ok(num) => num,
+    Err(_) => return Err(()),
+  };
+  let y: usize = match xy[1].trim().parse() {
+    Ok(num) => num,
+    Err(_) => return Err(()),
+  };
+  if x <= 2 && y <= 2 {
+    return Ok((x, y));
+  } else {
+    return Err(());
+  }
+}
+
+
 /*
 * Main tic tac toe board
 */
@@ -119,16 +142,9 @@ pub fn two_player_tictactoe_game() {
   loop {
     board.pretty_print();
     println!("Player {}, input your move: ", player);
-    let mut xy = String::new();
-    io::stdin().read_line(&mut xy).expect("Failed to read line");
-    let xy: Vec<&str> = xy.splitn(2, ",").collect();
-    let x: usize = match xy[0].trim().parse() {
-      Ok(num) => num,
-      Err(_) => continue,
-    };
-    let y: usize = match xy[1].trim().parse() {
-      Ok(num) => num,
-      Err(_) => continue,
+    let (x, y) = match get_move_input() {
+      Ok(moves) => moves,
+      Err(_) => { continue },
     };
     if board.get(x, y) == BoardEntry::Blank {
       board.put(x, y, player);
@@ -139,8 +155,10 @@ pub fn two_player_tictactoe_game() {
     match has_someone_won(&board) {
       Some(someone) => {
         if player == someone {
+          board.pretty_print();
           println!("Player {} has won!", player);
         } else if someone == BoardEntry::Blank {
+          board.pretty_print();
           println!("It's a draw!");
         }
         break;
