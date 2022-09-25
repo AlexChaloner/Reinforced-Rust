@@ -120,16 +120,6 @@ fn get_move_input() -> Result<(usize, usize), ()> {
   }
 }
 
-
-/*
-* Main tic tac toe board
-*/
-pub fn tictactoe_board() {
-  let mut board = create_initial_board();
-  board.put(0, 0, BoardEntry::X);
-  board.pretty_print();
-}
-
 pub fn two_player_tictactoe_game() {
   let mut board = create_initial_board();
   let mut player: BoardEntry;
