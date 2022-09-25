@@ -1,7 +1,10 @@
 use core::fmt;
+use std::io;
+use rand::Rng;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 #[derive(Debug)]
+#[derive(PartialEq, Eq)]
 enum BoardEntry {
   Blank,
   X,
@@ -26,8 +29,8 @@ struct Board {
 }
 
 impl Board {
-  fn get(&self, x: usize, y: usize ) -> &BoardEntry {
-    return &(&self.board[x])[y];
+  fn get(&self, x: usize, y: usize ) -> BoardEntry {
+    return self.board[x][y];
   }
   fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
     self.board[x][y] = entry;
@@ -45,17 +48,110 @@ impl Board {
   }
 }
 
-fn initialise_board() -> Board {
+fn create_initial_board() -> Board {
   return Board {
     board: vec![vec![BoardEntry::Blank; 3]; 3]
   };
+}
+
+fn has_someone_won(board: &Board) -> Option<BoardEntry> {
+  // Check rows
+  for y in 0..3 {
+    let first = board.get(0, y);
+    if first == BoardEntry::Blank { break };
+    if first == board.get(1, y) && first == board.get(2, y) {
+      return Some(first);
+    }
+  }
+  // Check columns
+  for x in 0..3 {
+    let first = board.get(x, 0);
+    if first == BoardEntry::Blank { break };
+    if first == board.get(x, 1) && first == board.get(x, 2) {
+      return Some(first);
+    }
+  }
+
+  // Check down diagonal
+  let first = board.get(0, 0);
+  if first != BoardEntry::Blank && first == board.get(1, 1) && first == board.get(2, 2) {
+    return Some(first);
+  }
+
+  // Check up diagonal
+  let first = board.get(0, 2);
+  if first != BoardEntry::Blank && first == board.get(1, 1) && first == board.get(2, 0) {
+    return Some(first);
+  }
+
+  // Check if the board is filled
+  for x in 0..=2 {
+    for y in 0..=2 {
+      if board.get(x, y) == BoardEntry::Blank {
+        // Nobody has won yet
+        return None;
+      }
+    }
+  }
+
+  // Indicates a draw
+  return Some(BoardEntry::Blank);
 }
 
 /*
 * Main tic tac toe board
 */
 pub fn tictactoe_board() {
-  let mut board = initialise_board();
+  let mut board = create_initial_board();
   board.put(0, 0, BoardEntry::X);
   board.pretty_print();
+}
+
+pub fn two_player_tictactoe_game() {
+  let mut board = create_initial_board();
+  let mut player: BoardEntry;
+  let who_starts = rand::thread_rng().gen_range(1..=2);
+  if who_starts == 1 {
+    player = BoardEntry::X;
+  } else {
+    player = BoardEntry::O;
+  }
+  loop {
+    board.pretty_print();
+    println!("Player {}, input your move: ", player);
+    let mut xy = String::new();
+    io::stdin().read_line(&mut xy).expect("Failed to read line");
+    let xy: Vec<&str> = xy.splitn(2, ",").collect();
+    let x: usize = match xy[0].trim().parse() {
+      Ok(num) => num,
+      Err(_) => continue,
+    };
+    let y: usize = match xy[1].trim().parse() {
+      Ok(num) => num,
+      Err(_) => continue,
+    };
+    if board.get(x, y) == BoardEntry::Blank {
+      board.put(x, y, player);
+    } else {
+      println!("Cell is already filled, please choose a different cell.");
+      continue;
+    }
+    match has_someone_won(&board) {
+      Some(someone) => {
+        if player == someone {
+          println!("Player {} has won!", player);
+        } else if someone == BoardEntry::Blank {
+          println!("It's a draw!");
+        }
+        break;
+      }
+      None => {}
+    }
+    // Switch player at end
+    match player {
+      BoardEntry::X => player = BoardEntry::O,
+      BoardEntry::O => player = BoardEntry::X,
+      _ => panic!("Unknown Player"),
+    }
+  }
 }
