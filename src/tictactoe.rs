@@ -5,7 +5,7 @@ use rand::Rng;
 #[derive(Clone, Copy)]
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
-enum BoardEntry {
+pub enum BoardEntry {
   Blank,
   X,
   O
@@ -24,18 +24,18 @@ impl fmt::Display for BoardEntry {
 /*
  Board struct
 */
-struct Board {
+pub struct Board {
   board: Vec<Vec<BoardEntry>>
 }
 
 impl Board {
-  fn get(&self, x: usize, y: usize ) -> BoardEntry {
+  pub fn get(&self, x: usize, y: usize ) -> BoardEntry {
     return self.board[x][y];
   }
-  fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
+  pub fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
     self.board[x][y] = entry;
   }
-  fn pretty_print(&self) {
+  pub fn pretty_print(&self) {
     let mut string = String::from("+---+---+---+\n");
     for x in 0..3 {
       string.push('|');
@@ -48,7 +48,7 @@ impl Board {
   }
 }
 
-fn create_initial_board() -> Board {
+pub fn create_initial_board() -> Board {
   return Board {
     board: vec![vec![BoardEntry::Blank; 3]; 3]
   };
