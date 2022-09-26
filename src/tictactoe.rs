@@ -24,16 +24,14 @@ impl fmt::Display for BoardEntry {
 /*
  Board struct
 */
-pub struct Board {
-  board: Vec<Vec<BoardEntry>>
-}
+pub struct Board(Vec<Vec<BoardEntry>>);
 
 impl Board {
   pub fn get(&self, x: usize, y: usize ) -> BoardEntry {
-    return self.board[x][y];
+    return self.0[x][y];
   }
   pub fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
-    self.board[x][y] = entry;
+    self.0[x][y] = entry;
   }
   pub fn pretty_print(&self) {
     let mut string = String::from("+---+---+---+\n");
@@ -49,9 +47,7 @@ impl Board {
 }
 
 pub fn create_initial_board() -> Board {
-  return Board {
-    board: vec![vec![BoardEntry::Blank; 3]; 3]
-  };
+  return Board(vec![vec![BoardEntry::Blank; 3]; 3]);
 }
 
 fn has_someone_won(board: &Board) -> Option<BoardEntry> {
