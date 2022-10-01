@@ -50,7 +50,7 @@ pub fn create_initial_board() -> Board {
   return Board(vec![vec![BoardEntry::Blank; 3]; 3]);
 }
 
-fn has_someone_won(board: &Board) -> Option<BoardEntry> {
+pub fn has_someone_won(board: &Board) -> Option<BoardEntry> {
   // Check rows
   for y in 0..3 {
     let first = board.get(0, y);
