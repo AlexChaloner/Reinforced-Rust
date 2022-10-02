@@ -4,7 +4,7 @@ use rand::Rng;
 
 #[derive(Clone, Copy)]
 #[derive(Debug)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Hash)]
 pub enum BoardEntry {
   Blank,
   X,
@@ -24,6 +24,7 @@ impl fmt::Display for BoardEntry {
 /*
  Board struct
 */
+#[derive(PartialEq, Eq, Hash)]
 pub struct Board(Vec<Vec<BoardEntry>>);
 
 impl Board {
