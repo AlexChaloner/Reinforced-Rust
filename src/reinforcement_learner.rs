@@ -34,7 +34,7 @@ fn get_moves_from_tictactoe_board(board: &Board) -> Vec<Action> {
   return moves;
 }
 
-fn choose_action(Q: &Q, state: &Board) -> Action {
+fn choose_action(q_values: &Q, state: &Board) -> Action {
   let mut available_actions = get_moves_from_tictactoe_board(&state);
   let mut thread_rng = rand::thread_rng();
   if available_actions.len() == 0 {
@@ -44,8 +44,10 @@ fn choose_action(Q: &Q, state: &Board) -> Action {
     return available_actions.remove(0);
   }
   let epsilon = 0.1;
-  let best_action = get_best_action(Q, state, Some(&available_actions));
-  println!("{}, {}", best_action.x, best_action.y);
+  let best_action = get_best_action(q_values, state, Some(&available_actions));
+  if cfg!(debug_assertions) {
+    println!("{}, {}", best_action.x, best_action.y);
+  }
   let random_value: f64 = thread_rng.gen();
   if random_value > epsilon {
     return best_action;
@@ -56,7 +58,7 @@ fn choose_action(Q: &Q, state: &Board) -> Action {
   }
 }
 
-fn get_best_action(Q: &Q, state: &Board, available_actions: Option<&Vec<Action>>) -> Action {
+fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<Action>>) -> Action {
   let available_actions = match available_actions {
     Some(actions) => actions.clone(),
     None => get_moves_from_tictactoe_board(&state),
@@ -67,10 +69,13 @@ fn get_best_action(Q: &Q, state: &Board, available_actions: Option<&Vec<Action>>
   let mut max: f64 = -100.0;
   let mut best_action = available_actions[0];
   for action in available_actions {
-    let value = match Q.get(&StateAction(state.clone(), action)) {
+    let value = match q_values.get(&StateAction(state.clone(), action)) {
       Some(q_value) => *q_value,
       None => 0.0,
     };
+    if cfg!(debug_assertions) {
+      println!("{}, {}: {}", action.x, action.y, value);
+    }
     if value > max {
       max = value;
       best_action = action;
@@ -97,14 +102,18 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
     // Repeat for each step of episode
     let mut terminal = false;
     while !terminal {
+      if cfg!(debug_assertions) {
+        state.pretty_print();
+        println!("Player {player}'s turn");
+      }
       // Choose A from S using policy derived from Q (e.g. epsilon-greedy)
-
+      
       let action = choose_action(&q_values, &state);
       // Take action A, observe R, S'
       let mut reward = 0.0;
       let mut next_state = state.clone();
       next_state.put(action.x, action.y, player);
-      next_state.pretty_print();
+      
       match tictactoe::has_someone_won(&next_state)  {
         // Give reward then end loop
         Some(someone) => { 
@@ -122,6 +131,7 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
       let current_q_value = *q_values.entry(StateAction(state.clone(), action)).or_insert(0.0);
       let next_state_best_q_value = match terminal {
           false => {
+            if cfg!(debug_assertions) { next_state.pretty_print(); }
             let best_next_action = get_best_action(&q_values, &next_state, None);
             *q_values.entry(StateAction(next_state.clone(), best_next_action)).or_insert(0.0)
           },
@@ -139,6 +149,7 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
       };
       // Until S is terminal
     }
+    if cfg!(debug_assertions) { state.pretty_print(); }
   }
   return q_values;
 }
