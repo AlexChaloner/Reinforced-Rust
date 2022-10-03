@@ -17,9 +17,9 @@ struct Action {
 }
 
 #[derive(PartialEq, Eq, Hash)]
-struct StateAction(Board, Action);
+pub struct StateAction(Board, Action);
 
-type Q<'a> = HashMap<StateAction, f64, RandomState>;
+pub type Q<'a> = HashMap<StateAction, f64, RandomState>;
 
 fn get_moves_from_tictactoe_board(board: &Board) -> Vec<Action> {
   // Get available actions from the board
@@ -44,7 +44,7 @@ fn choose_action(Q: &Q, state: &Board) -> Action {
     return available_actions.remove(0);
   }
   let epsilon = 0.1;
-  let best_action = best_action(Q, state, Some(&available_actions));
+  let best_action = get_best_action(Q, state, Some(&available_actions));
   println!("{}, {}", best_action.x, best_action.y);
   let random_value: f64 = thread_rng.gen();
   if random_value > epsilon {
@@ -56,7 +56,7 @@ fn choose_action(Q: &Q, state: &Board) -> Action {
   }
 }
 
-fn best_action(Q: &Q, state: &Board, available_actions: Option<&Vec<Action>>) -> Action {
+fn get_best_action(Q: &Q, state: &Board, available_actions: Option<&Vec<Action>>) -> Action {
   let available_actions = match available_actions {
     Some(actions) => actions.clone(),
     None => get_moves_from_tictactoe_board(&state),
@@ -80,7 +80,7 @@ fn best_action(Q: &Q, state: &Board, available_actions: Option<&Vec<Action>>) ->
 }
 
 // Let's do a simple Q-learning implementation
-pub fn q_learning(num_episodes: u32) {
+pub fn q_learning(num_episodes: u32) -> Q<'static> {
   let mut q_values: Q = HashMap::new();
 
   let alpha = 0.1;
@@ -122,7 +122,7 @@ pub fn q_learning(num_episodes: u32) {
       let current_q_value = *q_values.entry(StateAction(state.clone(), action)).or_insert(0.0);
       let next_state_best_q_value = match terminal {
           false => {
-            let best_next_action = best_action(&q_values, &next_state, None);
+            let best_next_action = get_best_action(&q_values, &next_state, None);
             *q_values.entry(StateAction(next_state.clone(), best_next_action)).or_insert(0.0)
           },
           true => 0.0,
@@ -132,14 +132,71 @@ pub fn q_learning(num_episodes: u32) {
       q_values.insert(StateAction(state, action), new_value);
       // S = S'
       state = next_state.clone();
-      // Until S is terminal
       player = match player {
         BoardEntry::O => BoardEntry::X,
         BoardEntry::X => BoardEntry::O,
         BoardEntry::Blank => panic!("At the disco"),
       };
+      // Until S is terminal
+    }
+  }
+  return q_values;
+}
+
+pub fn play_vs_human(q_values: Q) {
+  let mut board = tictactoe::create_initial_board();
+  
+  let who_starts = rand::thread_rng().gen_range(1..=2);
+  let mut whos_turn = if who_starts == 1 {
+    BoardEntry::X 
+  } else {
+    BoardEntry::O
+  };
+  println!("==================================");
+  println!("THE GAME BEGINS");
+  // Humans are Os because they are soft and squishy.
+  let human_player = BoardEntry::O;
+  loop {
+    board.pretty_print();
+    if whos_turn == human_player {
+      println!("Player {human_player}, input your move: ");
+      let (x, y) = match tictactoe::get_move_input() {
+        Ok(moves) => moves,
+        Err(_) => { continue },
+      };
+      if board.get(x, y) == BoardEntry::Blank {
+        board.put(x, y, human_player);
+      } else {
+        println!("Cell is already filled, please choose a different cell.");
+        continue;
+      }
+    } else {
+      // Machine's turn
+      let machine_move = get_best_action(&q_values, &board, None);
+      board.put(machine_move.x, machine_move.y, BoardEntry::X);
+    }
+
+    match tictactoe::has_someone_won(&board) {
+      Some(someone) => {
+        if human_player == someone {
+          board.pretty_print();
+          println!("Player {human_player} has won!");
+        } else if someone == BoardEntry::X {
+          println!("Machine has won!")
+        } else if someone == BoardEntry::Blank {
+          board.pretty_print();
+          println!("It's a draw!");
+        }
+        break;
+      }
+      None => {}
+    };
+
+    // Switch player at end
+    match whos_turn {
+      BoardEntry::X => whos_turn = BoardEntry::O,
+      BoardEntry::O => whos_turn = BoardEntry::X,
+      _ => panic!("Unknown Player"),
     }
   }
 }
-
-

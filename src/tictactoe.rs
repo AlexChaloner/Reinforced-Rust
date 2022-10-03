@@ -96,7 +96,7 @@ pub fn has_someone_won(board: &Board) -> Option<BoardEntry> {
   return Some(BoardEntry::Blank);
 }
 
-fn get_move_input() -> Result<(usize, usize), ()> {
+pub fn get_move_input() -> Result<(usize, usize), ()> {
   let mut xy = String::new();
   io::stdin().read_line(&mut xy).expect("Failed to read line");
   let xy: Vec<&str> = xy.splitn(2, ",").collect();
