@@ -25,6 +25,7 @@ impl fmt::Display for BoardEntry {
  Board struct
 */
 #[derive(PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct Board(Vec<Vec<BoardEntry>>);
 
 impl Board {
