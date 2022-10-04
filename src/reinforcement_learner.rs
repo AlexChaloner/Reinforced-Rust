@@ -43,18 +43,22 @@ fn choose_action(q_values: &Q, state: &Board) -> Action {
   if available_actions.len() == 1 {
     return available_actions.remove(0);
   }
-  let epsilon = 0.1;
-  let best_action = get_best_action(q_values, state, Some(&available_actions));
-  if cfg!(debug_assertions) {
-    println!("{}, {}", best_action.x, best_action.y);
-  }
+  let epsilon = 0.3;
   let random_value: f64 = thread_rng.gen();
   if random_value > epsilon {
+    let best_action = get_best_action(q_values, state, Some(&available_actions));
+    if cfg!(debug_assertions) {
+      println!("Chosen best action: {}, {}", best_action.x, best_action.y);
+    }
     return best_action;
   } else {
     let length = available_actions.len();
     let chosen_action = thread_rng.gen_range(0..length);
-    return available_actions.remove(chosen_action);
+    let action = available_actions.remove(chosen_action);
+    if cfg!(debug_assertions) {
+      println!("Chosen random action: {}, {}", action.x, action.y);
+    }
+    return action;
   }
 }
 
@@ -67,21 +71,34 @@ fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<A
     panic!("No moves available");
   }
   let mut max: f64 = -100.0;
-  let mut best_action = available_actions[0];
+  let mut best_actions = Vec::new();
   for action in available_actions {
     let value = match q_values.get(&StateAction(state.clone(), action)) {
       Some(q_value) => *q_value,
       None => 0.0,
     };
     if cfg!(debug_assertions) {
-      println!("{}, {}: {}", action.x, action.y, value);
+      println!("({}, {}): {}", action.x, action.y, value);
     }
     if value > max {
       max = value;
-      best_action = action;
+      best_actions = Vec::new();
+      best_actions.push(action);
+    } else if value == max {
+      best_actions.push(action);
     }
   }
-  return best_action;
+  if cfg!(debug_assertions) {
+    print!("Best actions: ");
+    for action in &best_actions {
+      print!("({}, {}), ", action.x, action.y);
+    }
+    print!("\n")
+  }
+  let mut thread_rng = rand::thread_rng();
+  let length = best_actions.len();
+  let chosen_action = thread_rng.gen_range(0..length);
+  return best_actions.remove(chosen_action);
 }
 
 // Let's do a simple Q-learning implementation
@@ -89,14 +106,19 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
   let mut q_values: Q = HashMap::new();
 
   let alpha = 0.1;
-  let gamma = 0.9;
+  let gamma = 0.99;
 
   // Initialise Q(s, a) arbitrarily for any s, a, and for terminal states set Q(s, _) = 0
   let mut player = BoardEntry::X;
 
   // Repeat for each episode
   for episode in 1..=num_episodes {
-    println!("Episode: {episode} / {num_episodes}");
+    if cfg!(debug_assertions) {
+      println!("Episode: {episode} / {num_episodes}");
+    } else if episode % 1000 == 0 {
+      println!("Episode: {episode} / {num_episodes}");
+    }
+    
     // Initialise S
     let mut state = tictactoe::create_initial_board();
     // Repeat for each step of episode
@@ -130,15 +152,18 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
       
       let current_q_value = *q_values.entry(StateAction(state.clone(), action)).or_insert(0.0);
       let next_state_best_q_value = match terminal {
-          false => {
-            if cfg!(debug_assertions) { next_state.pretty_print(); }
-            let best_next_action = get_best_action(&q_values, &next_state, None);
-            *q_values.entry(StateAction(next_state.clone(), best_next_action)).or_insert(0.0)
-          },
-          true => 0.0,
-        };
+        false => {
+          if cfg!(debug_assertions) { next_state.pretty_print(); }
+          let best_next_action = get_best_action(&q_values, &next_state, None);
+          *q_values.entry(StateAction(next_state.clone(), best_next_action)).or_insert(0.0)
+        },
+        true => 0.0,
+      };
       let new_value = current_q_value +
         alpha * (reward + gamma * (-1.0 * next_state_best_q_value - current_q_value));
+      if cfg!(debug_assertions) {
+        println!("Old Q value: {current_q_value}, new Q Value: {new_value}")
+      }
       q_values.insert(StateAction(state, action), new_value);
       // S = S'
       state = next_state.clone();
@@ -153,6 +178,7 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
   }
   return q_values;
 }
+
 
 pub fn play_vs_human(q_values: Q) {
   let mut board = tictactoe::create_initial_board();

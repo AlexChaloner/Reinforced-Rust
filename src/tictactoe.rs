@@ -36,13 +36,16 @@ impl Board {
     self.0[x][y] = entry;
   }
   pub fn pretty_print(&self) {
-    let mut string = String::from("+---+---+---+\n");
+    let mut string = String::from(
+      "x\\y| 0 | 1 | 2 |\n\
+       ---+---+---+---+\n"
+    );
     for x in 0..3 {
-      string.push('|');
+      string.push_str(format!(" {x} |").as_str());
       for y in 0..3 {
         string.push_str(format!(" {} |", self.get(x, y)).as_str());
       }
-      string.push_str("\n+---+---+---+\n");
+      string.push_str("\n---+---+---+---+\n");
     }
     println!("{}", string);
   }
