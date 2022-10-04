@@ -149,7 +149,6 @@ pub fn q_learning(num_episodes: u32) -> Q<'static> {
         None => {},
       }
       // Q(S, A) = Q(S, A) + alpha * (R + gamma * max_a Q(S', a) - Q(S, A))
-      
       let current_q_value = *q_values.entry(StateAction(state.clone(), action)).or_insert(0.0);
       let next_state_best_q_value = match terminal {
         false => {
