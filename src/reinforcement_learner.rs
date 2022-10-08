@@ -19,7 +19,7 @@ struct Action {
 #[derive(PartialEq, Eq, Hash)]
 pub struct StateAction(Board, Action);
 
-pub type Q<'a> = HashMap<StateAction, f64, RandomState>;
+pub type Q = HashMap<StateAction, f64, RandomState>;
 
 fn get_moves_from_tictactoe_board(board: &Board) -> Vec<Action> {
   // Get available actions from the board
@@ -102,7 +102,7 @@ fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<A
 }
 
 // Let's do a simple Q-learning implementation
-pub fn q_learning(num_episodes: u32) -> Q<'static> {
+pub fn q_learning(num_episodes: u32) -> Q {
   let mut q_values: Q = HashMap::new();
 
   let alpha = 0.1;
