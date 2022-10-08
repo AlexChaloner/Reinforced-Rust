@@ -23,114 +23,164 @@ impl fmt::Display for BoardEntry {
     }
 }
 
-struct Move {
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+pub struct TicTacToeMove {
     x: usize,
     y: usize,
-    player: BoardEntry,
 }
 
-impl Action for Move {
-    fn to_string() -> String {
-        todo!()
+impl TicTacToeMove {
+    pub fn new(x: usize, y: usize) -> TicTacToeMove {
+        TicTacToeMove { x, y }
     }
 }
+
+impl Action for TicTacToeMove {}
+
+impl fmt::Display for TicTacToeMove {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        return write!(f, "({}, {})", self.x, self.y);
+    }
+}
+
 
 /*
  Board struct
 */
 #[derive(PartialEq, Eq, Hash)]
 #[derive(Clone)]
-pub struct Board(Vec<Vec<BoardEntry>>);
+pub struct TicTacToeBoard {
+    board: Vec<Vec<BoardEntry>>,
+    pub current_player: BoardEntry,
+}
 
-impl State<Move> for Board {
-    fn to_string() -> String {
-        todo!()
+impl State<TicTacToeMove> for TicTacToeBoard {
+    fn initial_state() -> TicTacToeBoard {
+        let player: BoardEntry;
+        let who_starts = rand::thread_rng().gen_range(1..=2);
+        if who_starts == 1 {
+            player = BoardEntry::X;
+        } else {
+            player = BoardEntry::O;
+        }
+        return TicTacToeBoard { board: vec![vec![BoardEntry::Blank; 3]; 3], current_player: player };
     }
 
-    fn initial_state() -> Self {
-        return Board(vec![vec![BoardEntry::Blank; 3]; 3]);
+    fn next_state(&self, action: &TicTacToeMove) -> Self {
+        let mut clone = self.clone();
+        clone.put(action.x, action.y, self.current_player);
+        return clone;
     }
 
-    fn next_state(action: &Move) -> Self {
-        todo!()
+    fn is_terminal(&self) -> bool {
+        return match self.has_someone_won() {
+            Some(_) => true,
+            None => false
+        }
     }
 
-    fn is_terminal() -> bool {
-        todo!()
-    }
-
-    fn available_actions() -> Vec<Move> {
-        todo!()
+    // OPTIMISE
+    fn available_actions(&self) -> Vec<TicTacToeMove> {
+        // Get available actions from the board
+        let mut moves = Vec::new();
+        for x in 0..=2 {
+            for y in 0..=2 {
+                let this_move = TicTacToeMove { x, y };
+                if self.is_valid_move(this_move) {
+                    moves.push(this_move);
+                }
+            }
+        }
+        return moves;
     }
 }
 
-impl Board {
-    pub fn get(&self, x: usize, y: usize) -> BoardEntry {
-        return self.0[x][y];
+
+impl TicTacToeBoard {
+    fn new() -> TicTacToeBoard {
+        return TicTacToeBoard::initial_state();
     }
-    pub fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
-        self.0[x][y] = entry;
+
+    fn get(&self, x: usize, y: usize) -> BoardEntry {
+        return self.board[x][y];
     }
+
+    fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
+        self.board[x][y] = entry;
+    }
+
+    pub fn is_valid_move(&self, action: TicTacToeMove) -> bool {
+        return self.get(action.x, action.y) == BoardEntry::Blank;
+    }
+
+    pub fn change_player(&mut self) {
+        match self.current_player {
+            BoardEntry::X => self.current_player = BoardEntry::O,
+            BoardEntry::O => self.current_player = BoardEntry::X,
+            _ => panic!("Unknown Player"),
+        }
+    }
+
     pub fn pretty_print(&self) {
         let mut string = String::from(
-          "x\\y| 0 | 1 | 2 |\n\
-          ---+---+---+---+\n"
+            "x\\y| 0 | 1 | 2 |\n\
+            ---+---+---+---+\n"
         );
-      for x in 0..3 {
-          string.push_str(format!(" {x} |").as_str());
-          for y in 0..3 {
-              string.push_str(format!(" {} |", self.get(x, y)).as_str());
-          }
-          string.push_str("\n---+---+---+---+\n");
+        for x in 0..3 {
+            string.push_str(format!(" {x} |").as_str());
+            for y in 0..3 {
+                string.push_str(format!(" {} |", self.get(x, y)).as_str());
+            }
+            string.push_str("\n---+---+---+---+\n");
         }
         println!("{}", string);
     }
+
+    pub fn has_someone_won(&self) -> Option<BoardEntry> {
+        // Check rows
+        for y in 0..3 {
+            let first = self.get(0, y);
+            if first == BoardEntry::Blank { continue };
+            if first == self.get(1, y) && first == self.get(2, y) {
+                return Some(first);
+            }
+        }
+        // Check columns
+        for x in 0..3 {
+            let first = self.get(x, 0);
+            if first == BoardEntry::Blank { continue };
+            if first == self.get(x, 1) && first == self.get(x, 2) {
+                return Some(first);
+            }
+        }
+    
+        // Check down diagonal
+        let first = self.get(0, 0);
+        if first != BoardEntry::Blank && first == self.get(1, 1) && first == self.get(2, 2) {
+                return Some(first);
+        }
+    
+        // Check up diagonal
+        let first = self.get(0, 2);
+        if first != BoardEntry::Blank && first == self.get(1, 1) && first == self.get(2, 0) {
+                return Some(first);
+        }
+    
+        // Check if the board is filled
+        for x in 0..=2 {
+            for y in 0..=2 {
+            if self.get(x, y) == BoardEntry::Blank {
+                // Nobody has won yet
+                return None;
+            }
+            }
+        }
+    
+        // Indicates a draw
+        return Some(BoardEntry::Blank);
+    }
 }
 
-
-pub fn has_someone_won(board: &Board) -> Option<BoardEntry> {
-    // Check rows
-    for y in 0..3 {
-        let first = board.get(0, y);
-        if first == BoardEntry::Blank { continue };
-        if first == board.get(1, y) && first == board.get(2, y) {
-            return Some(first);
-        }
-    }
-    // Check columns
-    for x in 0..3 {
-        let first = board.get(x, 0);
-        if first == BoardEntry::Blank { continue };
-        if first == board.get(x, 1) && first == board.get(x, 2) {
-            return Some(first);
-        }
-    }
-
-    // Check down diagonal
-    let first = board.get(0, 0);
-    if first != BoardEntry::Blank && first == board.get(1, 1) && first == board.get(2, 2) {
-            return Some(first);
-    }
-
-    // Check up diagonal
-    let first = board.get(0, 2);
-    if first != BoardEntry::Blank && first == board.get(1, 1) && first == board.get(2, 0) {
-            return Some(first);
-    }
-
-    // Check if the board is filled
-    for x in 0..=2 {
-        for y in 0..=2 {
-        if board.get(x, y) == BoardEntry::Blank {
-            // Nobody has won yet
-            return None;
-        }
-        }
-    }
-
-    // Indicates a draw
-    return Some(BoardEntry::Blank);
-}
 
 pub fn get_move_input() -> Result<(usize, usize), ()> {
     let mut xy = String::new();
@@ -155,45 +205,61 @@ pub fn get_move_input() -> Result<(usize, usize), ()> {
 }
 
 pub fn two_player_tictactoe_game() {
-    let mut board = Board::initial_state();
-    let mut player: BoardEntry;
-    let who_starts = rand::thread_rng().gen_range(1..=2);
-    if who_starts == 1 {
-        player = BoardEntry::X;
-    } else {
-        player = BoardEntry::O;
-    }
+    let mut board = TicTacToeBoard::initial_state();
     loop {
         board.pretty_print();
-        println!("Player {}, input your move: ", player);
+        println!("Player {}, input your move: ", board.current_player);
         let (x, y) = match get_move_input() {
-        Ok(moves) => moves,
-        Err(_) => { continue },
+            Ok(moves) => moves,
+            Err(_) => { continue },
         };
         if board.get(x, y) == BoardEntry::Blank {
-        board.put(x, y, player);
+            board.put(x, y, board.current_player);
         } else {
         println!("Cell is already filled, please choose a different cell.");
-        continue;
+            continue;
         }
-        match has_someone_won(&board) {
-        Some(someone) => {
-            if player == someone {
-            board.pretty_print();
-            println!("Player {} has won!", player);
-            } else if someone == BoardEntry::Blank {
-            board.pretty_print();
-            println!("It's a draw!");
+        match board.has_someone_won() {
+            Some(someone) => {
+                if board.current_player == someone {
+                    board.pretty_print();
+                    println!("Player {} has won!", board.current_player);
+                } else if someone == BoardEntry::Blank {
+                    board.pretty_print();
+                    println!("It's a draw!");
+                }
+                break;
             }
-            break;
-        }
-        None => {}
+            None => {}
         }
         // Switch player at end
-        match player {
-        BoardEntry::X => player = BoardEntry::O,
-        BoardEntry::O => player = BoardEntry::X,
-        _ => panic!("Unknown Player"),
-        }
+        board.change_player();
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use crate::reinforcement_learning::generic_reinforcement_learner::State;
+
+    use super::TicTacToeBoard;
+
+    #[test]
+    fn tictactoe_board_changes_player() {
+        let mut board = TicTacToeBoard::new();
+        let player = board.current_player;
+        board.change_player();
+        assert_ne!(player, board.current_player);
+    }
+
+    #[test]
+    fn tictactoe_board_wins_correctly() {
+        let mut board = TicTacToeBoard::new();
+        board.put(0, 0, super::BoardEntry::O);
+        board.put(1, 1, super::BoardEntry::O);
+        board.put(2, 2, super::BoardEntry::O);
+        assert!(board.is_terminal());
+        assert_eq!(board.has_someone_won(), Some(super::BoardEntry::O));
     }
 }

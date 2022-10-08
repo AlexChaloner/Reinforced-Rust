@@ -8,34 +8,17 @@ use std::collections::{HashMap, hash_map::RandomState};
 
 use rand::Rng;
 
-use crate::{tictactoe::{self, Board, BoardEntry}, reinforcement_learning::generic_reinforcement_learner::State};
-
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
-struct Action {
-    x: usize,
-    y: usize,
-}
+use crate::{tictactoe::{self, TicTacToeBoard, BoardEntry, TicTacToeMove}, reinforcement_learning::generic_reinforcement_learner::State};
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct StateAction(Board, Action);
+pub struct StateAction(TicTacToeBoard, TicTacToeMove);
 
 pub type Q = HashMap<StateAction, f64, RandomState>;
 
-fn get_moves_from_tictactoe_board(board: &Board) -> Vec<Action> {
-    // Get available actions from the board
-    let mut moves = Vec::new();
-    for x in 0..=2 {
-        for y in 0..=2 {
-            if board.get(x, y) == BoardEntry::Blank {
-                moves.push(Action { x: x, y: y });
-            }
-        }
-    }
-    return moves;
-}
 
-fn choose_action(q_values: &Q, state: &Board) -> Action {
-    let mut available_actions = get_moves_from_tictactoe_board(&state);
+
+fn choose_action(q_values: &Q, state: &TicTacToeBoard) -> TicTacToeMove {
+    let mut available_actions = state.available_actions();
     let mut thread_rng = rand::thread_rng();
     if available_actions.len() == 0 {
         panic!("No moves available");
@@ -48,7 +31,7 @@ fn choose_action(q_values: &Q, state: &Board) -> Action {
     if random_value > epsilon {
         let best_action = get_best_action(q_values, state, Some(&available_actions));
         if cfg!(debug_assertions) {
-            println!("Chosen best action: {}, {}", best_action.x, best_action.y);
+            println!("Chosen best action: {}", best_action);
         }
         return best_action;
     } else {
@@ -56,16 +39,16 @@ fn choose_action(q_values: &Q, state: &Board) -> Action {
         let chosen_action = thread_rng.gen_range(0..length);
         let action = available_actions.remove(chosen_action);
         if cfg!(debug_assertions) {
-            println!("Chosen random action: {}, {}", action.x, action.y);
+            println!("Chosen random action: {}", action);
         }
         return action;
     }
 }
 
-fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<Action>>) -> Action {
+fn get_best_action(q_values: &Q, state: &TicTacToeBoard, available_actions: Option<&Vec<TicTacToeMove>>) -> TicTacToeMove {
     let available_actions = match available_actions {
         Some(actions) => actions.clone(),
-        None => get_moves_from_tictactoe_board(&state),
+        None => state.available_actions(),
     };
     if available_actions.len() == 0 {
         panic!("No moves available");
@@ -78,7 +61,7 @@ fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<A
             None => 0.0,
         };
         if cfg!(debug_assertions) {
-            println!("({}, {}): {}", action.x, action.y, value);
+            println!("{}: {}", action, value);
         }
         if value > max {
             max = value;
@@ -91,7 +74,7 @@ fn get_best_action(q_values: &Q, state: &Board, available_actions: Option<&Vec<A
     if cfg!(debug_assertions) {
         print!("Best actions: ");
         for action in &best_actions {
-            print!("({}, {}), ", action.x, action.y);
+            print!("{}, ", action);
         }
         print!("\n")
     }
@@ -109,7 +92,6 @@ pub fn q_learning(num_episodes: u32) -> Q {
   let gamma = 0.99;
 
   // Initialise Q(s, a) arbitrarily for any s, a, and for terminal states set Q(s, _) = 0
-  let mut player = BoardEntry::X;
 
   // Repeat for each episode
   for episode in 1..=num_episodes {
@@ -120,26 +102,25 @@ pub fn q_learning(num_episodes: u32) -> Q {
     }
     
     // Initialise S
-    let mut state = tictactoe::Board::initial_state();
+    let mut state = tictactoe::TicTacToeBoard::initial_state();
     // Repeat for each step of episode
     let mut terminal = false;
     while !terminal {
         if cfg!(debug_assertions) {
             state.pretty_print();
-            println!("Player {player}'s turn");
+            println!("Player {}'s turn", state.current_player);
         }
         // Choose A from S using policy derived from Q (e.g. epsilon-greedy)
         
         let action = choose_action(&q_values, &state);
         // Take action A, observe R, S'
         let mut reward = 0.0;
-        let mut next_state = state.clone();
-        next_state.put(action.x, action.y, player);
+        let next_state = state.next_state(&action);
         
-        match tictactoe::has_someone_won(&next_state)  {
+        match next_state.has_someone_won() {
             // Give reward then end loop
             Some(someone) => { 
-            if player == someone {
+            if state.current_player == someone {
                 reward = 1.0;
             } else if someone == BoardEntry::Blank {
                 reward = 0.0;
@@ -166,11 +147,7 @@ pub fn q_learning(num_episodes: u32) -> Q {
         q_values.insert(StateAction(state, action), new_value);
         // S = S'
         state = next_state.clone();
-        player = match player {
-            BoardEntry::O => BoardEntry::X,
-            BoardEntry::X => BoardEntry::O,
-            BoardEntry::Blank => panic!("At the disco"),
-        };
+        state.change_player();
         // Until S is terminal
         }
         if cfg!(debug_assertions) { state.pretty_print(); }
@@ -180,39 +157,34 @@ pub fn q_learning(num_episodes: u32) -> Q {
 
 
 pub fn play_vs_human(q_values: Q) {
-    let mut board = tictactoe::Board::initial_state();
+    let mut board = tictactoe::TicTacToeBoard::initial_state();
     
-    let who_starts = rand::thread_rng().gen_range(1..=2);
-    let mut whos_turn = if who_starts == 1 {
-        BoardEntry::X 
-    } else {
-        BoardEntry::O
-    };
     println!("==================================");
     println!("THE GAME BEGINS");
     // Humans are Os because they are soft and squishy.
     let human_player = BoardEntry::O;
     loop {
         board.pretty_print();
-        if whos_turn == human_player {
+        if board.current_player == human_player {
             println!("Player {human_player}, input your move: ");
             let (x, y) = match tictactoe::get_move_input() {
                 Ok(moves) => moves,
                 Err(_) => { continue },
             };
-            if board.get(x, y) == BoardEntry::Blank {
-                board.put(x, y, human_player);
+            let human_move = TicTacToeMove::new(x, y);
+            if board.is_valid_move(human_move) {
+                board = board.next_state(&human_move);
             } else {
-                println!("Cell is already filled, please choose a different cell.");
+                println!("Invalid move, please choose a different cell.");
                 continue;
             }
         } else {
             // Machine's turn
             let machine_move = get_best_action(&q_values, &board, None);
-            board.put(machine_move.x, machine_move.y, BoardEntry::X);
+            board = board.next_state(&machine_move);
         }
 
-        match tictactoe::has_someone_won(&board) {
+        match board.has_someone_won() {
             Some(someone) => {
                 if human_player == someone {
                     board.pretty_print();
@@ -229,10 +201,6 @@ pub fn play_vs_human(q_values: Q) {
         };
 
         // Switch player at end
-        match whos_turn {
-        BoardEntry::X => whos_turn = BoardEntry::O,
-        BoardEntry::O => whos_turn = BoardEntry::X,
-        _ => panic!("Unknown Player"),
-        }
+        board.change_player();
     }
 }
