@@ -23,6 +23,22 @@ impl fmt::Display for BoardEntry {
     }
 }
 
+impl TryFrom<char> for BoardEntry {
+    type Error = String;
+
+    fn try_from(char: char) -> Result<Self, Self::Error> {
+        if char == 'X' {
+            return Ok(BoardEntry::X);
+        } else if char == 'O' {
+            return Ok(BoardEntry::O);
+        } else if char == ' ' {
+            return Ok(BoardEntry::Blank);
+        } else {
+            return Err(format!("Invalid char {}", char));
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct TicTacToeMove {
     x: usize,
@@ -95,6 +111,29 @@ impl State<TicTacToeMove> for TicTacToeBoard {
     }
 }
 
+
+impl TryFrom<String> for TicTacToeBoard {
+    type Error = String;
+
+    fn try_from(str: String) -> Result<Self, Self::Error> {
+        if str.len() != 9 {
+            return Err("Wrong length".to_string())
+        }
+
+        let mut board = TicTacToeBoard::new();
+        for (i, char) in str.chars().enumerate() {
+            match BoardEntry::try_from(char) {
+                Ok(entry) => {
+                    let x = i / 3;
+                    let y = i % 3;
+                    board.put(x, y, entry);
+                },
+                Err(err) => return Err(err)
+            }
+        }
+        return Ok(board);
+    }
+}
 
 impl TicTacToeBoard {
     fn new() -> TicTacToeBoard {
