@@ -4,17 +4,66 @@
 // https://web.stanford.edu/class/psych209/Readings/SuttonBartoIPRLBook2ndEd.pdf
 // Q learning algorithm taken from page 158.
 
-use std::collections::{HashMap, hash_map::RandomState};
+use std::{collections::{HashMap, hash_map::RandomState}, thread, time::Duration, io::{self, Write}};
 
 use rand::Rng;
 
-use crate::{tictactoe::{self, TicTacToeBoard, BoardEntry, TicTacToeMove}, reinforcement_learning::generic_reinforcement_learner::State};
+use crate::{tictactoe::{self, TicTacToeBoard, BoardEntry, TicTacToeMove}, reinforcement_learning::generic_reinforcement_learner::{State, ReinforcementLearner, Action, Policy}};
+
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct StateAction(TicTacToeBoard, TicTacToeMove);
+pub struct StateAction<S, A>
+(S, A)
+where
+    S: State<A>,
+    A: Action;
 
-pub type Q = HashMap<StateAction, f64, RandomState>;
 
+pub struct QLearner<S, A>
+where
+    S: State<A>,
+    A: Action,
+{
+    q_values:  HashMap<StateAction<S, A>, f64, RandomState>,
+}
+
+
+impl<S, A> ReinforcementLearner<S, A> for QLearner<S, A>
+where
+    S: State<A>,
+    A: Action
+{
+    fn get_action_value(state: &S, action: &A) {
+        todo!()
+    }
+
+    fn update_action_value(state: &S, action: &A) {
+        todo!()
+    }
+
+    fn get_state_value(state: &S) {
+        todo!()
+    }
+
+    fn update_state_value(state: &S) {
+        todo!()
+    }
+}
+
+
+pub struct EpsilonGreedyPolicy {
+    epsilon: f64,
+}
+
+impl<S, A> Policy<S, A> for EpsilonGreedyPolicy
+where
+    S: State<A>,
+    A: Action
+{
+    fn get_action(state: &S) -> A {
+        todo!()
+    }
+}
 
 
 fn choose_action(q_values: &Q, state: &TicTacToeBoard) -> TicTacToeMove {
@@ -76,7 +125,7 @@ fn get_best_action(q_values: &Q, state: &TicTacToeBoard, available_actions: Opti
         for action in &best_actions {
             print!("{}, ", action);
         }
-        print!("\n")
+        println!("")
     }
     let mut thread_rng = rand::thread_rng();
     let length = best_actions.len();
@@ -111,8 +160,8 @@ pub fn q_learning(num_episodes: u32) -> Q {
             println!("Player {}'s turn", state.current_player);
         }
         // Choose A from S using policy derived from Q (e.g. epsilon-greedy)
-        
         let action = choose_action(&q_values, &state);
+
         // Take action A, observe R, S'
         let mut reward = 0.0;
         let next_state = state.next_state(&action);
@@ -147,7 +196,6 @@ pub fn q_learning(num_episodes: u32) -> Q {
         q_values.insert(StateAction(state, action), new_value);
         // S = S'
         state = next_state.clone();
-        state.change_player();
         // Until S is terminal
         }
         if cfg!(debug_assertions) { state.pretty_print(); }
@@ -157,32 +205,37 @@ pub fn q_learning(num_episodes: u32) -> Q {
 
 
 pub fn play_vs_human(q_values: Q) {
+    let stdin = io::stdin();
     let mut board = tictactoe::TicTacToeBoard::initial_state();
     
     println!("==================================");
     println!("THE GAME BEGINS");
     // Humans are Os because they are soft and squishy.
     let human_player = BoardEntry::O;
+    board.pretty_print();
     loop {
-        board.pretty_print();
         if board.current_player == human_player {
-            println!("Player {human_player}, input your move: ");
-            let (x, y) = match tictactoe::get_move_input() {
+            let input = stdin.lock();
+            let human_move = match tictactoe::get_move_input(&board, input) {
                 Ok(moves) => moves,
                 Err(_) => { continue },
             };
-            let human_move = TicTacToeMove::new(x, y);
-            if board.is_valid_move(human_move) {
-                board = board.next_state(&human_move);
-            } else {
-                println!("Invalid move, please choose a different cell.");
-                continue;
-            }
+            board = board.next_state(&human_move);
         } else {
             // Machine's turn
+            print!("Machine is making a move");
+            io::stdout().flush().unwrap();
+            for _ in 1..=3 {
+                thread::sleep(Duration::from_millis(300));
+                print!(".");
+                io::stdout().flush().unwrap();
+            }
+            println!("");
             let machine_move = get_best_action(&q_values, &board, None);
             board = board.next_state(&machine_move);
+            
         }
+        board.pretty_print();
 
         match board.has_someone_won() {
             Some(someone) => {
@@ -199,8 +252,5 @@ pub fn play_vs_human(q_values: Q) {
             }
             None => {}
         };
-
-        // Switch player at end
-        board.change_player();
     }
 }
