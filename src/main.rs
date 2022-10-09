@@ -1,6 +1,7 @@
 mod tictactoe;
 mod reinforcement_learner;
 mod reinforcement_learning;
+mod utils;
 
 fn main() {
     println!("Hello, world!");

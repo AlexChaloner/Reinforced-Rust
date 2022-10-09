@@ -1,8 +1,8 @@
 use core::fmt;
-use std::io;
+use std::io::{self, Stdin, BufRead};
 use rand::Rng;
 
-use crate::reinforcement_learning::generic_reinforcement_learner::{State, Action};
+use crate::{reinforcement_learning::generic_reinforcement_learner::{State, Action}, utils::prompt};
 
 #[derive(Clone, Copy)]
 #[derive(Debug)]
@@ -40,6 +40,7 @@ impl TryFrom<char> for BoardEntry {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug)]
 pub struct TicTacToeMove {
     x: usize,
     y: usize,
@@ -85,6 +86,7 @@ impl State<TicTacToeMove> for TicTacToeBoard {
     fn next_state(&self, action: &TicTacToeMove) -> Self {
         let mut clone = self.clone();
         clone.put(action.x, action.y, self.current_player);
+        clone.change_player();
         return clone;
     }
 
@@ -149,7 +151,7 @@ impl TicTacToeBoard {
     }
 
     pub fn is_valid_move(&self, action: TicTacToeMove) -> bool {
-        return self.get(action.x, action.y) == BoardEntry::Blank;
+        return action.x <= 2 && action.y <= 2 && self.get(action.x, action.y) == BoardEntry::Blank;
     }
 
     pub fn change_player(&mut self) {
@@ -221,9 +223,13 @@ impl TicTacToeBoard {
 }
 
 
-pub fn get_move_input() -> Result<(usize, usize), ()> {
-    let mut xy = String::new();
-    io::stdin().read_line(&mut xy).expect("Failed to read line");
+pub fn get_move_input<R>(board: &TicTacToeBoard, reader: R) -> Result<TicTacToeMove, ()>
+    where R: BufRead
+{
+    let output = io::stdout();
+
+    let xy = prompt(reader, output, &format!("Player {}, input your move: \n", board.current_player));
+
     let xy: Vec<&str> = xy.splitn(2, ",").collect();
     if xy.len() != 2 {
         return Err(());
@@ -236,53 +242,54 @@ pub fn get_move_input() -> Result<(usize, usize), ()> {
         Ok(num) => num,
         Err(_) => return Err(()),
     };
-    if x <= 2 && y <= 2 {
-        return Ok((x, y));
+    let human_move = TicTacToeMove { x, y };
+    if board.is_valid_move(human_move) {
+        return Ok(human_move);
     } else {
+        println!("Invalid move, please choose a different cell.");
         return Err(());
     }
 }
 
-pub fn two_player_tictactoe_game() {
-    let mut board = TicTacToeBoard::initial_state();
-    loop {
-        board.pretty_print();
-        println!("Player {}, input your move: ", board.current_player);
-        let (x, y) = match get_move_input() {
-            Ok(moves) => moves,
-            Err(_) => { continue },
-        };
-        if board.get(x, y) == BoardEntry::Blank {
-            board.put(x, y, board.current_player);
-        } else {
-        println!("Cell is already filled, please choose a different cell.");
-            continue;
-        }
-        match board.has_someone_won() {
-            Some(someone) => {
-                if board.current_player == someone {
-                    board.pretty_print();
-                    println!("Player {} has won!", board.current_player);
-                } else if someone == BoardEntry::Blank {
-                    board.pretty_print();
-                    println!("It's a draw!");
-                }
-                break;
-            }
-            None => {}
-        }
-        // Switch player at end
-        board.change_player();
-    }
-}
 
+// pub fn two_player_tictactoe_game() {
+//     let mut board = TicTacToeBoard::initial_state();
+//     loop {
+//         board.pretty_print();
+//         let (x, y) = match get_move_input(&board) {
+//             Ok(moves) => moves,
+//             Err(_) => { continue },
+//         };
+//         if board.get(x, y) == BoardEntry::Blank {
+//             board.put(x, y, board.current_player);
+//         } else {
+//         println!("Cell is already filled, please choose a different cell.");
+//             continue;
+//         }
+//         match board.has_someone_won() {
+//             Some(someone) => {
+//                 if board.current_player == someone {
+//                     board.pretty_print();
+//                     println!("Player {} has won!", board.current_player);
+//                 } else if someone == BoardEntry::Blank {
+//                     board.pretty_print();
+//                     println!("It's a draw!");
+//                 }
+//                 break;
+//             }
+//             None => {}
+//         }
+//         // Switch player at end
+//         board.change_player();
+//     }
+// }
 
 
 #[cfg(test)]
 mod tests {
-    use crate::reinforcement_learning::generic_reinforcement_learner::State;
+    use crate::{reinforcement_learning::generic_reinforcement_learner::State, tictactoe::TicTacToeMove};
 
-    use super::TicTacToeBoard;
+    use super::{TicTacToeBoard, get_move_input};
 
     #[test]
     fn tictactoe_board_changes_player() {
@@ -294,11 +301,56 @@ mod tests {
 
     #[test]
     fn tictactoe_board_wins_correctly() {
-        let mut board = TicTacToeBoard::new();
-        board.put(0, 0, super::BoardEntry::O);
-        board.put(1, 1, super::BoardEntry::O);
-        board.put(2, 2, super::BoardEntry::O);
+        let board = match TicTacToeBoard::try_from(
+            "OOO\
+            X X\
+            X  ".to_string()
+        ) {
+            Ok(res) => res,
+            Err(err) => panic!("{err}"),
+        };
         assert!(board.is_terminal());
         assert_eq!(board.has_someone_won(), Some(super::BoardEntry::O));
+    }
+
+    #[test]
+    fn tictactoe_board_draws_correctly() {
+        let board = match TicTacToeBoard::try_from(
+            "OXO\
+            XOX\
+            XOX".to_string()
+        ) {
+            Ok(res) => res,
+            Err(err) => panic!("{err}"),
+        };
+        assert!(board.is_terminal());
+        assert_eq!(board.has_someone_won(), Some(super::BoardEntry::Blank));
+    }
+
+    #[test]
+    fn tictactoe_board_returns_available_actions() {
+        let board = match TicTacToeBoard::try_from(
+            "O  \
+            XO \
+            XOX".to_string()
+        ) {
+            Ok(res) => res,
+            Err(err) => panic!("{err}"),
+        };
+        assert_eq!(board.available_actions(), vec![TicTacToeMove { x: 0, y: 1 }, TicTacToeMove { x: 0, y: 2 }, TicTacToeMove { x: 1, y: 2 }]);
+    }
+
+    #[test]
+    fn get_move_input_parses_input_correctly() {
+        let board = TicTacToeBoard::new();
+        
+        let input = b"2, 1";
+        assert_eq!(get_move_input(&board, &input[..]), Ok(TicTacToeMove { x: 2, y : 1}));
+
+        let input = b"3, 1";
+        assert_eq!(get_move_input(&board, &input[..]), Err(()));
+
+        let input = b"1";
+        assert_eq!(get_move_input(&board, &input[..]), Err(()));
     }
 }
