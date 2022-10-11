@@ -1,5 +1,5 @@
 use core::fmt;
-use std::io::{self, Stdin, BufRead};
+use std::{io::{self, Stdin, BufRead}, fmt::Display};
 use rand::Rng;
 
 use crate::{reinforcement_learning::generic_reinforcement_learner::{State, Action}, utils::prompt};
@@ -71,6 +71,23 @@ pub struct TicTacToeBoard {
     pub current_player: BoardEntry,
 }
 
+impl fmt::Display for TicTacToeBoard {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut string = String::from(
+            "x\\y| 0 | 1 | 2 |\n\
+            ---+---+---+---+\n"
+        );
+        for x in 0..3 {
+            string.push_str(format!(" {x} |").as_str());
+            for y in 0..3 {
+                string.push_str(format!(" {} |", self.get(x, y)).as_str());
+            }
+            string.push_str("\n---+---+---+---+\n");
+        }
+        return write!(f, "{}", string);
+    }
+}
+
 impl State<TicTacToeMove> for TicTacToeBoard {
     fn initial_state() -> TicTacToeBoard {
         let player: BoardEntry;
@@ -110,6 +127,10 @@ impl State<TicTacToeMove> for TicTacToeBoard {
             }
         }
         return moves;
+    }
+
+    fn num_available_actions(&self) -> usize {
+        return self.available_actions().len();
     }
 }
 
@@ -160,21 +181,6 @@ impl TicTacToeBoard {
             BoardEntry::O => self.current_player = BoardEntry::X,
             _ => panic!("Unknown Player"),
         }
-    }
-
-    pub fn pretty_print(&self) {
-        let mut string = String::from(
-            "x\\y| 0 | 1 | 2 |\n\
-            ---+---+---+---+\n"
-        );
-        for x in 0..3 {
-            string.push_str(format!(" {x} |").as_str());
-            for y in 0..3 {
-                string.push_str(format!(" {} |", self.get(x, y)).as_str());
-            }
-            string.push_str("\n---+---+---+---+\n");
-        }
-        println!("{}", string);
     }
 
     pub fn has_someone_won(&self) -> Option<BoardEntry> {

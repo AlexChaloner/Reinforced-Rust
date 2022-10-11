@@ -1,6 +1,8 @@
 // Reinforcement learning module
 
-pub trait State<A>
+use std::fmt::Display;
+
+pub trait State<A>: Display
 where
     A: Action
 {
@@ -14,7 +16,7 @@ where
 }
 
 
-pub trait Action {
+pub trait Action: Display {
 }
 
 
@@ -32,7 +34,7 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action(state: &S) -> A;
+    fn get_action(&self, values: Vec<(A, f64)>) -> A;
 }
 
 
