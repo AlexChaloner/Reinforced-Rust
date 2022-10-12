@@ -1,8 +1,9 @@
 // Reinforcement learning module
 
 use std::fmt::Display;
+use core::hash::Hash;
 
-pub trait State<A>: Display
+pub trait State<A>: Display + Eq + Hash
 where
     A: Action
 {
@@ -16,7 +17,7 @@ where
 }
 
 
-pub trait Action: Display {
+pub trait Action: Display + Eq + Hash {
 }
 
 
@@ -43,9 +44,9 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action_value(state: &S, action: &A);
-    fn update_action_value(state: &S, action: &A);
-    fn get_state_value(state: &S);
-    fn update_state_value(state: &S);
+    fn get_action_value(&self, state: S, action: A) -> f64;
+    fn update_action_value(&mut self, state: &S, action: &A, value: f64);
+    fn get_state_value(&self, state: &S) -> f64;
+    fn update_state_value(&mut self, state: &S, value: f64);
 }
 
