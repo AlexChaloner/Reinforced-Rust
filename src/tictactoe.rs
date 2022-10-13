@@ -132,6 +132,10 @@ impl State<TicTacToeMove> for TicTacToeBoard {
     fn num_available_actions(&self) -> usize {
         return self.available_actions().len();
     }
+
+    fn get_reward(state: Self, action: &TicTacToeMove, next_state: Self) -> f64 {
+        todo!()
+    }
 }
 
 

@@ -1,7 +1,5 @@
 use std::collections::{HashMap, hash_map::RandomState};
 
-use crate::tictactoe;
-
 use super::generic_reinforcement_learner::{ReinforcementLearner, Action, State, Policy};
 
 #[derive(PartialEq, Eq, Hash)]
@@ -9,26 +7,6 @@ pub struct StateAction<S, A>(S, A)
 where
     S: State<A>,
     A: Action;
-
-
-// impl<S, A> Eq for StateAction<S, A>
-// where
-//     S: State<A> + std::cmp::PartialEq,
-//     A: Action + std::cmp::PartialEq
-// {
-//     // fn assert_receiver_is_total_eq(&self) {}
-// }
-
-// impl<S, A> std::hash::Hash for StateAction<S, A>
-// where
-//     S: State<A> + std::hash::Hash,
-//     A: Action + std::hash::Hash
-// {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         self.0.hash(state);
-//         self.1.hash(state);
-//     }
-// }
 
 
 pub struct QLearner<S, A>
@@ -54,15 +32,31 @@ where
         }
     }
 
-    fn get_action_values(&self, state: S) -> f64 {
-        match self.q_values.get(&StateAction (state, action)) {
-            Some(value) => *value,
-            None => 0.0
+    fn get_action_values(&self, state: S) -> Vec<(A, f64)> {
+        let values: Vec<(A, f64)> = Vec::new();
+        for action in state.available_actions() {
+            values.push((action, self.get_action_value(state, action)));
         }
+        return values;
     }
 
-    fn update_action_value(&mut self, state: &S, action: &A, value: f64) {
-        self.q_values.insert(StateAction(*state, *action), value);
+    fn get_best_action(&self, state: &S) -> A {
+        return self.get_action_values(*state).iter()
+            .max_by(|v, w| v.1.partial_cmp(&w.1).unwrap())
+            .unwrap().0;
+    }
+
+    fn update_action_value(&mut self, state: &S, action: &A, next_state: &S, reward: f64) {
+        let current_q_value = self.get_action_value(*state, *action);
+        if cfg!(debug_assertions) { println!("{next_state}"); }
+        let best_next_action = self.get_best_action(state);
+        let next_state_best_q_value = self.get_action_value(*next_state, best_next_action);
+        let new_value = current_q_value +
+            self.alpha * (reward + self.gamma * (-1.0 * next_state_best_q_value - current_q_value));
+        if cfg!(debug_assertions) {
+            println!("Old Q value: {current_q_value}, new Q Value: {new_value}")
+        }
+        self.q_values.insert(StateAction(*state, *action), new_value);
     }
 
     fn get_state_value(&self, state: &S) -> f64 {
@@ -93,55 +87,28 @@ where
             }
             
             // Initialise S
-            let mut state = tictactoe::TicTacToeBoard::initial_state();
+            let mut state: S = State::initial_state();
             // Repeat for each step of episode
-            let mut terminal = false;
-            while !terminal {
+            while !state.is_terminal() {
                 if cfg!(debug_assertions) {
                     println!("{}", state);
-                    println!("Player {}'s turn", state.current_player);
                 }
                 // Choose A from S using policy derived from Q (e.g. epsilon-greedy)
-                let action = policy.get_action(&q_values, &state);
+                let action = policy.get_action(self.get_action_values(state));
         
                 // Take action A, observe R, S'
-                let mut reward = 0.0;
-                let next_state = state.next_state(&action);
                 
-                match next_state.has_someone_won() {
-                    // Give reward then end loop
-                    Some(someone) => { 
-                        if state.current_player == someone {
-                            reward = 1.0;
-                        } else if someone == BoardEntry::Blank {
-                            reward = 0.0;
-                        }
-                        terminal = true;
-                    }
-                    None => {},
-                }
+                let next_state = state.next_state(&action);
+                let reward = S::get_reward(state, &action, next_state);
+                
                 // Q(S, A) = Q(S, A) + alpha * (R + gamma * max_a Q(S', a) - Q(S, A))
-                let current_q_value = *q_values.entry(StateAction(state.clone(), action)).or_insert(0.0);
-                let next_state_best_q_value = match terminal {
-                    false => {
-                        if cfg!(debug_assertions) { next_state.pretty_print(); }
-                        let best_next_action = get_best_action(&q_values, &next_state, None);
-                        *q_values.entry(StateAction(next_state.clone(), best_next_action)).or_insert(0.0)
-                    },
-                    true => 0.0,
-                };
-                let new_value = current_q_value +
-                    alpha * (reward + gamma * (-1.0 * next_state_best_q_value - current_q_value));
-                if cfg!(debug_assertions) {
-                    println!("Old Q value: {current_q_value}, new Q Value: {new_value}")
-                }
-                q_values.insert(StateAction(state, action), new_value);
+                self.update_action_value(&state, &action, &next_state, reward);
+                
                 // S = S'
-                state = next_state.clone();
+                state = next_state;
                 // Until S is terminal
             }
-            if cfg!(debug_assertions) { state.pretty_print(); }
+            if cfg!(debug_assertions) { println!("{state}"); }
         }
-        return q_values;
     }
 }

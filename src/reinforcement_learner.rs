@@ -6,12 +6,10 @@
 
 use std::{thread, time::Duration, io::{self, Write}};
 
-use crate::{tictactoe::{self, BoardEntry}, reinforcement_learning::generic_reinforcement_learner::{State}};
+use crate::{tictactoe::{self, BoardEntry, TicTacToeBoard, TicTacToeMove}, reinforcement_learning::{generic_reinforcement_learner::{State, ReinforcementLearner}, q_learning_learner::{self, QLearner}}};
 
 
-
-
-pub fn play_vs_human(q_values: Q) {
+pub fn play_vs_human(q_learning_learner: QLearner<TicTacToeBoard, TicTacToeMove>) {
     let stdin = io::stdin();
     let mut board = tictactoe::TicTacToeBoard::initial_state();
     
@@ -19,7 +17,7 @@ pub fn play_vs_human(q_values: Q) {
     println!("THE GAME BEGINS");
     // Humans are Os because they are soft and squishy.
     let human_player = BoardEntry::O;
-    board.pretty_print();
+    println!("{board}");
     loop {
         if board.current_player == human_player {
             let input = stdin.lock();
@@ -38,21 +36,21 @@ pub fn play_vs_human(q_values: Q) {
                 io::stdout().flush().unwrap();
             }
             println!();
-            let machine_move = get_best_action(&q_values, &board, None);
+            let machine_move = q_learning_learner.get_best_action(&board);
             board = board.next_state(&machine_move);
             
         }
-        board.pretty_print();
+        println!("{board}");
 
         match board.has_someone_won() {
             Some(someone) => {
                 if human_player == someone {
-                    board.pretty_print();
+                    println!("{board}");
                     println!("Player {human_player} has won!");
                 } else if someone == BoardEntry::X {
                     println!("Machine has won!")
                 } else if someone == BoardEntry::Blank {
-                    board.pretty_print();
+                    println!("{board}");
                     println!("It's a draw!");
                 }
                 break;
