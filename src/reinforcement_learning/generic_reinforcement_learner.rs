@@ -14,7 +14,7 @@ where
     fn num_available_actions(&self) -> usize {
         return self.available_actions().len();
     }
-    fn get_reward(state: Self, action: &A, next_state: Self) -> f64;
+    fn get_reward(state: &Self, action: &A, next_state: &Self) -> f64;
 }
 
 
@@ -27,7 +27,7 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action(&self, values: Vec<(A, f64)>) -> A;
+    fn get_action(&self, values: &Vec<(A, f64)>) -> A;
 }
 
 
@@ -36,11 +36,10 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action_value(&self, state: S, action: A) -> f64;
-    fn get_action_values(&self, state: S) -> Vec<(A, f64)>;
+    fn get_action_value(&self, state: &S, action: &A) -> f64;
+    fn get_action_values(&self, state: &S) -> Vec<(A, f64)>;
     fn update_action_value(&mut self, state: &S, action: &A, next_state: &S, reward: f64);
     fn get_state_value(&self, state: &S) -> f64;
     fn update_state_value(&mut self, state: &S, value: f64);
     fn get_best_action(&self, state: &S) -> A;
 }
-

@@ -22,7 +22,7 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_best_action(&self, actions_and_values: Vec<(A, f64)>) -> A {
+    fn get_best_action(&self, actions_and_values: &Vec<(A, f64)>) -> A {
 
         if actions_and_values.len() == 0 {
             panic!("No moves available");
@@ -36,17 +36,17 @@ where
             if cfg!(debug_assertions) {
                 println!("{}: {}", action, value);
             }
-            if value > max {
-                max = value;
+            if *value > max {
+                max = *value;
                 best_actions = Vec::new();
                 best_actions.push(action);
-            } else if value == max {
+            } else if *value == max {
                 best_actions.push(action);
             }
         }
         if cfg!(debug_assertions) {
             print!("Best actions: ");
-            for action in &best_actions {
+            for action in best_actions {
                 print!("{}, ", action);
             }
             println!();
@@ -54,7 +54,7 @@ where
         let mut thread_rng = rand::thread_rng();
         let length = best_actions.len();
         let chosen_action = thread_rng.gen_range(0..length);
-        return best_actions.remove(chosen_action);
+        return *best_actions.remove(chosen_action);
     }
 }
 
@@ -64,7 +64,7 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action(&self, actions_and_values: Vec<(A, f64)>) -> A {
+    fn get_action(&self, actions_and_values: &Vec<(A, f64)>) -> A {
         // let mut available_actions = state.available_actions();
         let mut thread_rng = rand::thread_rng();
         if actions_and_values.len() == 0 {

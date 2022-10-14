@@ -1,5 +1,5 @@
 use core::fmt;
-use std::{io::{self, Stdin, BufRead}, fmt::Display};
+use std::{io::{self, BufRead}};
 use rand::Rng;
 
 use crate::{reinforcement_learning::generic_reinforcement_learner::{State, Action}, utils::prompt};
@@ -133,7 +133,7 @@ impl State<TicTacToeMove> for TicTacToeBoard {
         return self.available_actions().len();
     }
 
-    fn get_reward(state: Self, action: &TicTacToeMove, next_state: Self) -> f64 {
+    fn get_reward(state: &Self, action: &TicTacToeMove, next_state: &Self) -> f64 {
         todo!()
     }
 }

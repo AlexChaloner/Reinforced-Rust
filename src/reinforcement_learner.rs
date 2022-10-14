@@ -6,7 +6,7 @@
 
 use std::{thread, time::Duration, io::{self, Write}};
 
-use crate::{tictactoe::{self, BoardEntry, TicTacToeBoard, TicTacToeMove}, reinforcement_learning::{generic_reinforcement_learner::{State, ReinforcementLearner}, q_learning_learner::{self, QLearner}}};
+use crate::{tictactoe::{self, BoardEntry, TicTacToeBoard, TicTacToeMove}, reinforcement_learning::{generic_reinforcement_learner::{State, ReinforcementLearner}, q_learning_learner::QLearner}};
 
 
 pub fn play_vs_human(q_learning_learner: QLearner<TicTacToeBoard, TicTacToeMove>) {
