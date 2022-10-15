@@ -78,10 +78,8 @@ where
     fn update_action_value(&mut self, state: &S, action: &A, next_state: &S, reward: f64) {
         let current_q_value = self.get_action_value(state, action);
         if cfg!(debug_assertions) { println!("{next_state}"); }
-        let best_next_action = self.get_best_action(state);
-        let next_state_best_q_value = self.get_action_value(next_state, &best_next_action);
         let new_value = current_q_value +
-            self.alpha * (reward + self.gamma * (-1.0 * next_state_best_q_value - current_q_value));
+            self.alpha * (reward + self.gamma * (-1.0 * self.get_state_value(next_state) - current_q_value));
         if cfg!(debug_assertions) {
             println!("Old Q value: {current_q_value}, new Q Value: {new_value}")
         }
@@ -90,8 +88,11 @@ where
     }
 
     fn get_state_value(&self, state: &S) -> f64 {
+        if state.is_terminal() {
+            return 0.0;
+        }
         let best_action = self.get_best_action(state);
-        *self.q_values.get(&StateAction(state.clone(), best_action)).unwrap()
+        self.get_action_value(state, &best_action)
     }
 
     fn update_state_value(&mut self, _state: &S, _value: f64) {
