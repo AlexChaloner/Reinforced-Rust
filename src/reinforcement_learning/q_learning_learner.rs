@@ -1,32 +1,34 @@
 use std::collections::{HashMap, hash_map::RandomState};
 
+use rand::Rng;
+
 use super::generic_reinforcement_learner::{ReinforcementLearner, Action, State, Policy};
 
 #[derive(PartialEq, Eq, Hash)]
-pub struct StateAction<'a, S: 'a, A: 'a>(&'a S, &'a A)
+pub struct StateAction<S, A>(S, A)
 where
     S: State<A>,
     A: Action;
 
 
-pub struct QLearner<'a, S, A>
+pub struct QLearner<S, A>
 where
     S: State<A>,
     A: Action
 {
-    q_values: HashMap<StateAction<'a, S, A>, f64, RandomState>,
-    alpha: f64,
-    gamma: f64
+    pub q_values: HashMap<StateAction<S, A>, f64, RandomState>,
+    pub alpha: f64,
+    pub gamma: f64
 }
 
 
-impl<S, A> ReinforcementLearner<S, A> for QLearner<'_, S, A>
+impl<S, A> ReinforcementLearner<S, A> for QLearner<S, A>
 where
     S: State<A>,
-    A: Action
+    A: Action,
 {
     fn get_action_value(&self, state: &S, action: &A) -> f64 {
-        match self.q_values.get(&StateAction (state, action)) {
+        match self.q_values.get(&StateAction (state.clone(), action.clone())) {
             Some(value) => *value,
             None => 0.0
         }
@@ -38,20 +40,39 @@ where
             let value = self.get_action_value(state, &action);
             values.push((action, value));
         }
-        return values;
+        values
     }
 
     fn get_best_action(&self, state: &S) -> A {
-        let mut action_values = self.get_action_values(state);
-        let mut best_action_value = -1000.0;
-        let mut best_action = action_values.remove(0).0;
-        for (action, value) in action_values {
-            if value > best_action_value {
-                best_action_value = value;
-                best_action = action;
+        let actions_and_values = self.get_action_values(state);
+        if actions_and_values.is_empty() {
+            panic!("No actions available, state is terminal?");
+        }
+        let mut max: f64 = -1000.0;
+        let mut best_actions = Vec::new();
+        for (action, value) in actions_and_values {
+            if cfg!(debug_assertions) {
+                println!("{}: {}", action, value);
+            }
+            if value > max {
+                max = value;
+                best_actions = Vec::new();
+                best_actions.push(action);
+            } else if value == max {
+                best_actions.push(action);
             }
         }
-        return best_action;
+        if cfg!(debug_assertions) {
+            print!("Best actions: ");
+            for action in &best_actions {
+                print!("{}, ", action);
+            }
+            println!();
+        }
+        let mut thread_rng = rand::thread_rng();
+        let length = best_actions.len();
+        let chosen_action = thread_rng.gen_range(0..length);
+        best_actions[chosen_action].clone()
     }
 
     fn update_action_value(&mut self, state: &S, action: &A, next_state: &S, reward: f64) {
@@ -64,20 +85,22 @@ where
         if cfg!(debug_assertions) {
             println!("Old Q value: {current_q_value}, new Q Value: {new_value}")
         }
-        self.q_values.insert(StateAction(state, action), new_value);
+        let state_action = StateAction(state.clone(), action.clone());
+        self.q_values.insert(state_action, new_value);
     }
 
     fn get_state_value(&self, state: &S) -> f64 {
-        todo!()
+        let best_action = self.get_best_action(state);
+        *self.q_values.get(&StateAction(state.clone(), best_action)).unwrap()
     }
 
-    fn update_state_value(&mut self, state: &S, value: f64) {
-        todo!()
+    fn update_state_value(&mut self, _state: &S, _value: f64) {
+        panic!("Q Learner cannot directly update state value.")
     }
 }
 
 
-impl<S, A> QLearner<'_, S, A>
+impl<S, A> QLearner<S, A>
 where
     S: State<A>,
     A: Action,
@@ -88,9 +111,7 @@ where
     
         // Repeat for each episode
         for episode in 1..=num_episodes {
-            if cfg!(debug_assertions) {
-                println!("Episode: {episode} / {num_episodes}");
-            } else if episode % 1000 == 0 {
+            if cfg!(debug_assertions) || episode % 1000 == 0 {
                 println!("Episode: {episode} / {num_episodes}");
             }
             
@@ -102,7 +123,8 @@ where
                     println!("{}", state);
                 }
                 // Choose A from S using policy derived from Q (e.g. epsilon-greedy)
-                let action = policy.get_action(&self.get_action_values(&state));
+                let mut action_values = self.get_action_values(&state);
+                let action = policy.get_action(&mut action_values);
         
                 // Take action A, observe R, S'
                 let next_state = state.next_state(&action);

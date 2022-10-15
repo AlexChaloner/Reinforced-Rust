@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use core::hash::Hash;
 
-pub trait State<A>: Display + Eq + Hash
+pub trait State<A>: Display + Eq + Hash + Clone
 where
     A: Action
 {
@@ -12,13 +12,13 @@ where
     fn is_terminal(&self) -> bool;
     fn available_actions(&self) -> Vec<A>;
     fn num_available_actions(&self) -> usize {
-        return self.available_actions().len();
+        self.available_actions().len()
     }
     fn get_reward(state: &Self, action: &A, next_state: &Self) -> f64;
 }
 
 
-pub trait Action: Display + Eq + Hash {
+pub trait Action: Display + Eq + Hash + Clone {
 }
 
 
@@ -27,7 +27,7 @@ where
     S: State<A>,
     A: Action
 {
-    fn get_action(&self, values: &Vec<(A, f64)>) -> A;
+    fn get_action(&self, values: &mut Vec<(A, f64)>) -> A;
 }
 
 

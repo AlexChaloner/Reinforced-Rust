@@ -28,13 +28,13 @@ impl TryFrom<char> for BoardEntry {
 
     fn try_from(char: char) -> Result<Self, Self::Error> {
         if char == 'X' {
-            return Ok(BoardEntry::X);
+            Ok(BoardEntry::X)
         } else if char == 'O' {
-            return Ok(BoardEntry::O);
+            Ok(BoardEntry::O)
         } else if char == ' ' {
-            return Ok(BoardEntry::Blank);
+            Ok(BoardEntry::Blank)
         } else {
-            return Err(format!("Invalid char {}", char));
+            Err(format!("Invalid char {}", char))
         }
     }
 }
@@ -56,7 +56,7 @@ impl Action for TicTacToeMove {}
 
 impl fmt::Display for TicTacToeMove {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        return write!(f, "({}, {})", self.x, self.y);
+        write!(f, "({}, {})", self.x, self.y)
     }
 }
 
@@ -84,34 +84,31 @@ impl fmt::Display for TicTacToeBoard {
             }
             string.push_str("\n---+---+---+---+\n");
         }
-        return write!(f, "{}", string);
+        write!(f, "{}", string)
     }
 }
 
 impl State<TicTacToeMove> for TicTacToeBoard {
     fn initial_state() -> TicTacToeBoard {
-        let player: BoardEntry;
+        
         let who_starts = rand::thread_rng().gen_range(1..=2);
-        if who_starts == 1 {
-            player = BoardEntry::X;
+        let player: BoardEntry = if who_starts == 1 {
+            BoardEntry::X
         } else {
-            player = BoardEntry::O;
-        }
-        return TicTacToeBoard { board: vec![vec![BoardEntry::Blank; 3]; 3], current_player: player };
+            BoardEntry::O
+        };
+        TicTacToeBoard { board: vec![vec![BoardEntry::Blank; 3]; 3], current_player: player }
     }
 
     fn next_state(&self, action: &TicTacToeMove) -> Self {
         let mut clone = self.clone();
         clone.put(action.x, action.y, self.current_player);
         clone.change_player();
-        return clone;
+        clone
     }
 
     fn is_terminal(&self) -> bool {
-        return match self.has_someone_won() {
-            Some(_) => true,
-            None => false
-        }
+        self.has_someone_won().is_some()
     }
 
     // OPTIMISE
@@ -126,15 +123,25 @@ impl State<TicTacToeMove> for TicTacToeBoard {
                 }
             }
         }
-        return moves;
+        moves
     }
 
     fn num_available_actions(&self) -> usize {
-        return self.available_actions().len();
+        self.available_actions().len()
     }
 
-    fn get_reward(state: &Self, action: &TicTacToeMove, next_state: &Self) -> f64 {
-        todo!()
+    fn get_reward(state: &Self, _action: &TicTacToeMove, next_state: &Self) -> f64 {
+        if !next_state.is_terminal() { return 0.0; }
+        match next_state.has_someone_won() {
+            Some(entry) => {
+                if entry == state.current_player {
+                    1.0
+                } else {
+                    0.0
+                }
+            },
+            None => 0.0
+        }
     }
 }
 
@@ -158,17 +165,17 @@ impl TryFrom<String> for TicTacToeBoard {
                 Err(err) => return Err(err)
             }
         }
-        return Ok(board);
+        Ok(board)
     }
 }
 
 impl TicTacToeBoard {
     fn new() -> TicTacToeBoard {
-        return TicTacToeBoard::initial_state();
+        TicTacToeBoard::initial_state()
     }
 
     fn get(&self, x: usize, y: usize) -> BoardEntry {
-        return self.board[x][y];
+        self.board[x][y]
     }
 
     fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
@@ -176,7 +183,7 @@ impl TicTacToeBoard {
     }
 
     pub fn is_valid_move(&self, action: TicTacToeMove) -> bool {
-        return action.x <= 2 && action.y <= 2 && self.get(action.x, action.y) == BoardEntry::Blank;
+        action.x <= 2 && action.y <= 2 && self.get(action.x, action.y) == BoardEntry::Blank
     }
 
     pub fn change_player(&mut self) {
@@ -184,7 +191,7 @@ impl TicTacToeBoard {
             BoardEntry::X => self.current_player = BoardEntry::O,
             BoardEntry::O => self.current_player = BoardEntry::X,
             _ => panic!("Unknown Player"),
-        }
+        };
     }
 
     pub fn has_someone_won(&self) -> Option<BoardEntry> {
@@ -228,7 +235,7 @@ impl TicTacToeBoard {
         }
     
         // Indicates a draw
-        return Some(BoardEntry::Blank);
+        Some(BoardEntry::Blank)
     }
 }
 
@@ -240,7 +247,7 @@ pub fn get_move_input<R>(board: &TicTacToeBoard, reader: R) -> Result<TicTacToeM
 
     let xy = prompt(reader, output, &format!("Player {}, input your move: \n", board.current_player));
 
-    let xy: Vec<&str> = xy.splitn(2, ",").collect();
+    let xy: Vec<&str> = xy.splitn(2, ',').collect();
     if xy.len() != 2 {
         return Err(());
     }
@@ -254,10 +261,10 @@ pub fn get_move_input<R>(board: &TicTacToeBoard, reader: R) -> Result<TicTacToeM
     };
     let human_move = TicTacToeMove { x, y };
     if board.is_valid_move(human_move) {
-        return Ok(human_move);
+        Ok(human_move)
     } else {
         println!("Invalid move, please choose a different cell.");
-        return Err(());
+        Err(())
     }
 }
 
