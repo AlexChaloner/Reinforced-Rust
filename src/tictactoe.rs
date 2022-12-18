@@ -67,7 +67,10 @@ impl fmt::Display for TicTacToeMove {
 #[derive(PartialEq, Eq, Hash)]
 #[derive(Clone)]
 pub struct TicTacToeBoard {
-    board: Vec<Vec<BoardEntry>>,
+    /*
+    * Internal state represented by a length-9 base-3 number.
+    */
+    internal_state: u32,
     pub current_player: BoardEntry,
 }
 
@@ -97,7 +100,7 @@ impl State<TicTacToeMove> for TicTacToeBoard {
         } else {
             BoardEntry::O
         };
-        TicTacToeBoard { board: vec![vec![BoardEntry::Blank; 3]; 3], current_player: player }
+        TicTacToeBoard { internal_state: 0, current_player: player }
     }
 
     fn next_state(&self, action: &TicTacToeMove) -> Self {
@@ -174,12 +177,28 @@ impl TicTacToeBoard {
         TicTacToeBoard::initial_state()
     }
 
+    fn translate_coords_to_internal_state_position(&self, x: usize, y: usize) -> u32 {
+        ((x * 3) + y).try_into().unwrap()
+    }
+
     fn get(&self, x: usize, y: usize) -> BoardEntry {
-        self.board[x][y]
+        let entry = (self.internal_state / 10_u32.pow(self.translate_coords_to_internal_state_position(x, y))) % 10;
+        match entry {
+            0 => BoardEntry::Blank,
+            1 => BoardEntry::O,
+            2 => BoardEntry::X,
+            _ => panic!("Unknown entry in ({}, {}): {}", x, y, entry)
+        }
     }
 
     fn put(&mut self, x: usize, y: usize, entry: BoardEntry) {
-        self.board[x][y] = entry;
+        let position = self.translate_coords_to_internal_state_position(x, y);
+        let entry_number = match entry {
+            BoardEntry::Blank => 0,
+            BoardEntry::O => 1,
+            BoardEntry::X => 2
+        };
+        self.internal_state = ((self.internal_state / (10_u32.pow(position))) + entry_number) * 10_u32.pow(position) + (self.internal_state % 10_u32.pow(position));
     }
 
     pub fn is_valid_move(&self, action: TicTacToeMove) -> bool {
