@@ -6,10 +6,10 @@
 
 use std::{thread, time::Duration, io::{self, Write}};
 
-use crate::{tictactoe::{self, BoardEntry, TicTacToeBoard, TicTacToeMove}, reinforcement_learning::{generic_reinforcement_learner::{State, ReinforcementLearner}, q_learning_learner::QLearner}};
+use crate::{tictactoe::{self, BoardEntry, TicTacToeBoard}, reinforcement_learning::{generic_reinforcement_learner::{State, ReinforcementLearner}, q_learning_learner::QLearner}};
 
 
-pub fn play_vs_human(q_learning_learner: QLearner<TicTacToeBoard, TicTacToeMove>) {
+pub fn play_vs_human(q_learning_learner: QLearner<TicTacToeBoard>) {
     let stdin = io::stdin();
     let mut board = tictactoe::TicTacToeBoard::initial_state();
     

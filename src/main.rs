@@ -15,6 +15,6 @@ fn main() {
         gamma: 0.9,
     };
     let policy = EpsilonGreedyPolicy::new(0.1);
-    q_learner.q_learning(&policy, 10000000);
+    q_learner.q_learning(&policy, 100000);
     reinforcement_learner::play_vs_human(q_learner);
 }

@@ -2,25 +2,23 @@ use std::marker::PhantomData;
 
 use rand::Rng;
 
-use super::generic_reinforcement_learner::{State, Action, Policy};
+use super::generic_reinforcement_learner::{State, Policy};
 
 
 
-pub struct EpsilonGreedyPolicy<S, A>
+pub struct EpsilonGreedyPolicy<S>
 where 
-    S: State<A>,
-    A: Action
+    S: State
 {
     pub epsilon: f64,
     state: PhantomData<S>,
-    action: PhantomData<A>
+    action: PhantomData<S::A>
 }
 
 
-impl<S, A> EpsilonGreedyPolicy<S, A>
+impl<S> EpsilonGreedyPolicy<S>
 where 
-    S: State<A>,
-    A: Action
+    S: State
 {
     pub fn new(epsilon: f64) -> Self {
         Self {
@@ -30,7 +28,7 @@ where
         }
     }
 
-    fn get_best_action(actions_and_values: &Vec<(A, f64)>) -> A {
+    fn get_best_action(actions_and_values: &Vec<(S::A, f64)>) -> S::A {
         if actions_and_values.is_empty() {
             panic!("No actions available, state is terminal?");
         }
@@ -63,13 +61,11 @@ where
 }
 
 
-impl<S, A> Policy<S, A> for EpsilonGreedyPolicy<S, A>
+impl<S> Policy<S> for EpsilonGreedyPolicy<S>
 where
-    S: State<A>,
-    A: Action
+    S: State
 {
-    fn get_action(&self, actions_and_values: &mut Vec<(A, f64)>) -> A {
-        // let mut available_actions = state.available_actions();
+    fn get_action(&self, actions_and_values: &mut Vec<(S::A, f64)>) -> S::A {
         let mut thread_rng = rand::thread_rng();
         if actions_and_values.is_empty() {
             panic!("No moves available");

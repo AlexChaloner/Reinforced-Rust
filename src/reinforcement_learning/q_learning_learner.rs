@@ -7,35 +7,33 @@ use super::generic_reinforcement_learner::{ReinforcementLearner, Action, State, 
 #[derive(PartialEq, Eq, Hash)]
 pub struct StateAction<S, A>(S, A)
 where
-    S: State<A>,
+    S: State,
     A: Action;
 
 
-pub struct QLearner<S, A>
+pub struct QLearner<S>
 where
-    S: State<A>,
-    A: Action
+    S: State
 {
-    pub q_values: HashMap<StateAction<S, A>, f64, RandomState>,
+    pub q_values: HashMap<StateAction<S, S::A>, f64, RandomState>,
     pub alpha: f64,
     pub gamma: f64
 }
 
 
-impl<S, A> ReinforcementLearner<S, A> for QLearner<S, A>
+impl<S> ReinforcementLearner<S> for QLearner<S>
 where
-    S: State<A>,
-    A: Action,
+    S: State
 {
-    fn get_action_value(&self, state: &S, action: &A) -> f64 {
+    fn get_action_value(&self, state: &S, action: &S::A) -> f64 {
         match self.q_values.get(&StateAction (state.clone(), action.clone())) {
             Some(value) => *value,
             None => 0.0
         }
     }
 
-    fn get_action_values(&self, state: &S) -> Vec<(A, f64)> {
-        let mut values: Vec<(A, f64)> = Vec::new();
+    fn get_action_values(&self, state: &S) -> Vec<(S::A, f64)> {
+        let mut values: Vec<(S::A, f64)> = Vec::new();
         for action in state.available_actions() {
             let value = self.get_action_value(state, &action);
             values.push((action, value));
@@ -43,7 +41,7 @@ where
         values
     }
 
-    fn get_best_action(&self, state: &S) -> A {
+    fn get_best_action(&self, state: &S) -> S::A {
         let actions_and_values = self.get_action_values(state);
         if actions_and_values.is_empty() {
             panic!("No actions available, state is terminal?");
@@ -75,7 +73,7 @@ where
         best_actions[chosen_action].clone()
     }
 
-    fn update_action_value(&mut self, state: &S, action: &A, next_state: &S, reward: f64) {
+    fn update_action_value(&mut self, state: &S, action: &S::A, next_state: &S, reward: f64) {
         let current_q_value = self.get_action_value(state, action);
         if cfg!(debug_assertions) { println!("{next_state}"); }
         let new_value = current_q_value +
@@ -101,13 +99,12 @@ where
 }
 
 
-impl<S, A> QLearner<S, A>
+impl<S> QLearner<S>
 where
-    S: State<A>,
-    A: Action,
+    S: State
 {
     // Let's do a simple Q-learning implementation
-    pub fn q_learning(&mut self, policy: &dyn Policy<S, A>, num_episodes: u32) {
+    pub fn q_learning(&mut self, policy: &dyn Policy<S>, num_episodes: u32) {
         // Initialise Q(s, a) arbitrarily for any s, a, and for terminal states set Q(s, _) = 0
     
         // Repeat for each episode

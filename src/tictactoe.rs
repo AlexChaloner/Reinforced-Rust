@@ -91,7 +91,9 @@ impl fmt::Display for TicTacToeBoard {
     }
 }
 
-impl State<TicTacToeMove> for TicTacToeBoard {
+impl State for TicTacToeBoard {
+    type A = TicTacToeMove;
+
     fn initial_state() -> TicTacToeBoard {
         
         let who_starts = rand::thread_rng().gen_range(1..=2);
