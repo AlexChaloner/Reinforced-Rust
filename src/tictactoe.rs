@@ -200,7 +200,8 @@ impl TicTacToeBoard {
             BoardEntry::O => 1,
             BoardEntry::X => 2
         };
-        self.internal_state = ((self.internal_state / (10_u32.pow(position))) + entry_number) * 10_u32.pow(position) + (self.internal_state % 10_u32.pow(position));
+        let position_10_pow = 10_u32.pow(position);
+        self.internal_state = ((self.internal_state / position_10_pow) + entry_number) * position_10_pow + (self.internal_state % position_10_pow);
     }
 
     pub fn is_valid_move(&self, action: TicTacToeMove) -> bool {
