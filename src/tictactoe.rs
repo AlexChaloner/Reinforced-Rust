@@ -2,7 +2,9 @@ use core::fmt;
 use std::{io::{self, BufRead}};
 use rand::Rng;
 
-use crate::{reinforcement_learning::generic_reinforcement_learner::{State, Action}, utils::prompt};
+use crate::{reinforcement_learning::{generic_reinforcement_learner::{State, Action, ReinforcementLearner}, q_learning_learner::QLearner}, utils::prompt};
+
+use std::{thread, time::Duration, io::{Write}};
 
 #[derive(Clone, Copy)]
 #[derive(Debug)]
@@ -208,7 +210,7 @@ impl TicTacToeBoard {
         action.x <= 2 && action.y <= 2 && self.get(action.x, action.y) == BoardEntry::Blank
     }
 
-    pub fn change_player(&mut self) {
+    fn change_player(&mut self) {
         match self.current_player {
             BoardEntry::X => self.current_player = BoardEntry::O,
             BoardEntry::O => self.current_player = BoardEntry::X,
@@ -265,63 +267,99 @@ impl TicTacToeBoard {
 pub fn get_move_input<R>(board: &TicTacToeBoard, reader: R) -> Result<TicTacToeMove, ()>
     where R: BufRead
 {
-    let output = io::stdout();
+    let mut output = io::stdout();
 
-    let xy = prompt(reader, output, &format!("Player {}, input your move: \n", board.current_player));
+    let xy_str = prompt(reader, &mut output, &format!("Player {}, input your move: \n", board.current_player));
 
-    let xy: Vec<&str> = xy.splitn(2, ',').collect();
+    let xy: Vec<&str> = xy_str.splitn(2, ',').collect();
     if xy.len() != 2 {
+        println!("Invalid input: {}", xy_str);
         return Err(());
     }
     let x: usize = match xy[0].trim().parse() {
         Ok(num) => num,
-        Err(_) => return Err(()),
+        Err(_) => {
+            println!("Invalid x value: {}", xy[0]);
+            return Err(());
+        },
     };
     let y: usize = match xy[1].trim().parse() {
         Ok(num) => num,
-        Err(_) => return Err(()),
+        Err(_) => {
+            println!("Invalid y value: {}", xy[1]);
+            return Err(());
+        },
     };
     let human_move = TicTacToeMove { x, y };
     if board.is_valid_move(human_move) {
-        Ok(human_move)
+        return Ok(human_move);
     } else {
         println!("Invalid move, please choose a different cell.");
-        Err(())
+        return Err(());
     }
 }
 
 
-// pub fn two_player_tictactoe_game() {
-//     let mut board = TicTacToeBoard::initial_state();
-//     loop {
-//         board.pretty_print();
-//         let (x, y) = match get_move_input(&board) {
-//             Ok(moves) => moves,
-//             Err(_) => { continue },
-//         };
-//         if board.get(x, y) == BoardEntry::Blank {
-//             board.put(x, y, board.current_player);
-//         } else {
-//         println!("Cell is already filled, please choose a different cell.");
-//             continue;
-//         }
-//         match board.has_someone_won() {
-//             Some(someone) => {
-//                 if board.current_player == someone {
-//                     board.pretty_print();
-//                     println!("Player {} has won!", board.current_player);
-//                 } else if someone == BoardEntry::Blank {
-//                     board.pretty_print();
-//                     println!("It's a draw!");
-//                 }
-//                 break;
-//             }
-//             None => {}
-//         }
-//         // Switch player at end
-//         board.change_player();
-//     }
-// }
+fn human_turn(stdin: &io::Stdin, board: &TicTacToeBoard) -> TicTacToeBoard {
+    loop {
+        let input = stdin.lock();
+        let human_move = match get_move_input(&board, input) {
+            Ok(chosen_move) => chosen_move,
+            Err(_) => continue
+        };
+        return board.next_state(&human_move);
+    }
+}
+
+fn machine_turn(q_learning_learner: &QLearner<TicTacToeBoard>, board: &TicTacToeBoard) -> TicTacToeBoard{
+    // Machine's turn
+    print!("Machine is making a move");
+    io::stdout().flush().unwrap();
+    for _ in 1..=3 {
+        thread::sleep(Duration::from_millis(300));
+        print!(".");
+        io::stdout().flush().unwrap();
+    }
+    println!();
+    let machine_move = q_learning_learner.get_best_action(&board);
+    return board.next_state(&machine_move);
+}
+
+
+pub fn play_vs_human(q_learning_learner: QLearner<TicTacToeBoard>) {
+    let stdin = io::stdin();
+    let mut board = TicTacToeBoard::initial_state();
+    
+    println!("==================================");
+    println!("THE GAME BEGINS");
+    // Humans are Os because they are soft and squishy.
+    let human_player = BoardEntry::O;
+    println!("{board}");
+    loop {
+        if board.current_player == human_player {
+            board = human_turn(&stdin, &board);
+        } else {
+            board = machine_turn(&q_learning_learner, &board);
+        }
+        println!("{board}");
+
+        match board.has_someone_won() {
+            Some(someone) => {
+                if human_player == someone {
+                    println!("{board}");
+                    println!("Player {human_player} has won!");
+                } else if someone == BoardEntry::X {
+                    println!("Machine has won!")
+                } else if someone == BoardEntry::Blank {
+                    println!("{board}");
+                    println!("It's a draw!");
+                }
+                break;
+            }
+            None => {}
+        };
+    }
+}
 
 
 #[cfg(test)]

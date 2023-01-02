@@ -4,6 +4,10 @@ use rand::Rng;
 
 use super::generic_reinforcement_learner::{ReinforcementLearner, Action, State, Policy};
 
+// Sutton and Barto RL book:
+// https://web.stanford.edu/class/psych209/Readings/SuttonBartoIPRLBook2ndEd.pdf
+// Q learning algorithm taken from page 158.
+
 #[derive(PartialEq, Eq, Hash)]
 pub struct StateAction<S, A>(S, A)
 where
