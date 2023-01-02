@@ -1,13 +1,28 @@
 # Reinforced Rust
 A little reinforcement learning project using Rust.
 
-## Installation
+## Prerequisites
 
-Prerequisites:
-- Rust
+Rust version > 1.66
 
-Then compile using:
+## Running
+
+Run using:
+
+```bash
+cargo run --release
+```
+
+Run with debug info using:
 
 ```bash
 cargo run
+```
+
+## Testing
+
+Run tests using:
+
+```bash
+cargo test
 ```
